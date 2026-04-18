@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Layer and Blend — Where paint takes form</title>
+    
+    <!-- Dependencies -->
+    <!-- React & ReactDOM -->
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+    
+    <!-- Babel for JSX (using Standalone) -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <!-- Tailwind CSS Play CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Framer Motion (UMD) -->
+    <script src="https://unpkg.com/framer-motion@10.16.4/dist/framer-motion.js"></script>
+    
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@0.284.0/dist/umd/lucide.min.js"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        sage: {
+                            50: '#f4f7f4',
+                            100: '#e5ebe5',
+                            200: '#cedbcd',
+                            300: '#a9c0a8',
+                            400: '#7fa07e',
+                            500: '#5c7f5b',
+                            600: '#486547',
+                            700: '#3c523b',
+                            800: '#324231',
+                            900: '#2a3729',
+                        },
+                        earth: {
+                            50: '#faf9f6',
+                            100: '#f2f0e9',
+                            200: '#e3dfd3',
+                            800: '#4a4435',
+                            900: '#2a2720',
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+                        display: ['Outfit', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style type="text/tailwindcss">
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@400;600;700&display=swap');
+        
+        @layer base {
+            body {
+                @apply bg-earth-50 text-earth-900 overflow-x-hidden;
+            }
+        }
+        
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            @apply bg-earth-50;
+        }
+        ::-webkit-scrollbar-thumb {
+            @apply bg-sage-200 rounded-full;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            @apply bg-sage-300;
+        }
+    </style>
+</head>
+<body>
+    <div id="root">
+        <!-- Fallback message if JS fails or is slow -->
+        <div style="display: flex; justify-content: center; align-items: center; height: 100vh; font-family: sans-serif; color: #5c7f5b;">
+            <p>Loading Layer and Blend...</p>
+        </div>
+    </div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+        const { motion, AnimatePresence } = window.Motion;
+
+        // Custom Icon Component to bridge Lucide
+        const Icon = ({ name, size = 24, className = "" }) => {
+            useEffect(() => {
+                if (window.lucide) {
+                    window.lucide.createIcons();
+                }
+            }, [name]);
+            return <i data-lucide={name} style={{ width: size, height: size }} className={className}></i>;
+        };
+
+        const navLinks = [
+            { name: 'Home', href: '#home' },
+            { name: 'About Us', href: '#about-us' },
+            { name: 'Sign Up', href: '#sign-up' },
+            { name: 'Meet the Team', href: '#meet-the-team' },
+            { name: 'Gallery', href: '#gallery' },
+        ];
+
+        function App() {
+            const [isMenuOpen, setIsMenuOpen] = useState(false);
+            const [email, setEmail] = useState('');
+            const [status, setStatus] = useState('idle');
+            const [validImages, setValidImages] = useState([]);
+            const videoRef = useRef(null);
+
+            useEffect(() => {
+                const checkImages = async () => {
+                    const imagePaths = Array.from({ length: 20 }, (_, i) => `./${i + 1}.jpeg`);
+                    const checks = imagePaths.map(path => {
+                        return new Promise((resolve) => {
+                            const img = new Image();
+                            img.onload = () => resolve(path);
+                            img.onerror = () => resolve(null);
+                            img.src = path;
+                        });
+                    });
+
+                    const results = await Promise.all(checks);
+                    setValidImages(results.filter((path) => path !== null));
+                };
+                checkImages();
+            }, []);
+
+            useEffect(() => {
+                if (videoRef.current) {
+                    videoRef.current.muted = true;
+                    videoRef.current.play().catch(e => console.log("Autoplay blocked", e));
+                }
+            }, []);
+
+            const scrollToSection = (id) => {
+                const element = document.querySelector(id);
+                if (element) {
+                    element.scrollIntoView({ behavior: 'smooth' });
+                }
+                setIsMenuOpen(false);
+            };
+
+            const handleSignUp = async (e) => {
+                e.preventDefault();
+                if (!email) return;
+                
+                setStatus('loading');
+                try {
+                    const response = await fetch('https://formspree.io/f/xwvaeapv', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json'
+                        },
+                        body: JSON.stringify({ email }),
+                    });
+                    
+                    if (response.ok) {
+                        setStatus('success');
+                        setEmail('');
+                        setTimeout(() => setStatus('idle'), 5000);
+                    } else {
+                        setStatus('error');
+                    }
+                } catch (error) {
+                    setStatus('error');
+                }
+            };
+
+            return (
+                <div className="min-h-screen">
+                    <nav className="fixed top-0 left-0 right-0 z-50 border-b border-earth-200 bg-earth-50/80 backdrop-blur-md">
+                        <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
+                            <div className="flex items-center gap-1 text-2xl font-bold tracking-tight font-display">
+                                Layer and Blend<span className="text-sage-500">.</span>
+                            </div>
+
+                            <div className="hidden md:flex items-center gap-8">
+                                {navLinks.map((link) => (
+                                    <button
+                                        key={link.name}
+                                        onClick={() => scrollToSection(link.href)}
+                                        className="text-sm font-medium text-earth-800 transition-colors hover:text-sage-600"
+                                    >
+                                        {link.name}
+                                    </button>
+                                ))}
+                            </div>
+
+                            <button 
+                                className="md:hidden p-2 text-earth-900"
+                                onClick={() => setIsMenuOpen(!isMenuOpen)}
+                            >
+                                <Icon name={isMenuOpen ? "x" : "menu"} />
+                            </button>
+                        </div>
+
+                        <AnimatePresence>
+                            {isMenuOpen && (
+                                <motion.div
+                                    initial={{ opacity: 0, height: 0 }}
+                                    animate={{ opacity: 1, height: 'auto' }}
+                                    exit={{ opacity: 0, height: 0 }}
+                                    className="md:hidden border-t border-earth-200 bg-earth-50 overflow-hidden"
+                                >
+                                    <div className="flex flex-col p-6 gap-4">
+                                        {navLinks.map((link) => (
+                                            <button
+                                                key={link.name}
+                                                onClick={() => scrollToSection(link.href)}
+                                                className="text-left text-lg font-medium text-earth-800"
+                                            >
+                                                {link.name}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
+                    </nav>
+
+                    <section id="home" className="pt-24 pb-12 px-6 text-center">
+                        <motion.div
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 0.8 }}
+                            className="mx-auto max-w-5xl"
+                        >
+                            <p className="mx-auto text-lg text-earth-800 md:text-xl leading-relaxed font-medium">
+                                Layer and Blend — Where paint takes form
+                            </p>
+                        </motion.div>
+                    </section>
+
+                    <section className="w-full h-[80vh] md:h-[90vh] overflow-hidden relative bg-earth-900">
+                        <video
+                            ref={videoRef}
+                            autoPlay
+                            muted
+                            loop
+                            playsInline
+                            className="w-full h-full object-cover"
+                        >
+                            <source src="./webbanner123.mp4" type="video/mp4" />
+                            <source src="https://assets.mixkit.co/videos/preview/mixkit-painting-a-miniature-figure-with-a-brush-41134-large.mp4" type="video/mp4" />
+                        </video>
+                    </section>
+
+                    <section id="about-us" className="bg-earth-100 py-32 px-6 text-center">
+                        <div className="mx-auto max-w-4xl">
+                            <span className="mb-6 block text-sm font-bold uppercase tracking-widest text-sage-500">
+                                ABOUT LAYER AND BLEND
+                            </span>
+                            <div className="space-y-6 text-2xl font-light leading-relaxed text-earth-900 md:text-3xl">
+                                <p>
+                                    Layer and Blend is a community for adults who want to reconnect with their creativity among like-minded people. Think of us as a secret clubhouse for everyone whose idea of fun involves tiny details and big imaginations. Based in Northampton, UK.
+                                </p>
+                                <p>
+                                    A space to slow down, relax, and leave with a unique art piece made by your hands.
+                                </p>
+                                <p className="font-medium text-sage-600">
+                                    Sign up below to be notified of our first session.
+                                </p>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section className="bg-earth-100 py-32 px-6">
+                        <div className="mx-auto max-w-7xl">
+                            <div className="grid gap-8 md:grid-cols-3">
+                                {[
+                                    {
+                                        icon: "palette",
+                                        title: "Creative Skills",
+                                        text: "Work with custom 3D character models using a range of acrylic techniques. Develop your painting skills, refine your style, and leave with a piece you’re proud to take home."
+                                    },
+                                    {
+                                        icon: "users",
+                                        title: "Community",
+                                        text: "Join a community of like-minded creatives. Share the process, exchange ideas, and spend time with people who value craft, focus, and creative growth."
+                                    },
+                                    {
+                                        icon: "heart",
+                                        title: "Wellbeing",
+                                        text: "Join a community of like-minded creatives. Share the process, exchange ideas, and enjoy creating together in a relaxed, welcoming space."
+                                    }
+                                ].map((pillar, idx) => (
+                                    <motion.div
+                                        key={idx}
+                                        initial={{ opacity: 0, y: 20 }}
+                                        whileInView={{ opacity: 1, y: 0 }}
+                                        viewport={{ once: true }}
+                                        transition={{ delay: idx * 0.2, duration: 0.6 }}
+                                        className="rounded-[2rem] border border-earth-200 bg-white p-10 shadow-sm transition-shadow hover:shadow-md"
+                                    >
+                                        <div className="mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-sage-500/10 text-sage-500">
+                                            <Icon name={pillar.icon} size={32} />
+                                        </div>
+                                        <h3 className="mb-4 text-2xl font-bold text-earth-900 font-display">{pillar.title}</h3>
+                                        <p className="leading-relaxed text-earth-800">{pillar.text}</p>
+                                    </motion.div>
+                                ))}
+                            </div>
+                        </div>
+                    </section>
+
+                    <section id="sign-up" className="bg-white py-32 px-6">
+                        <div className="mx-auto max-w-3xl">
+                            <div className="relative overflow-hidden rounded-[2rem] md:rounded-[3rem] bg-earth-900 p-6 md:p-20 text-earth-50 shadow-2xl">
+                                <div className="absolute -top-24 -right-24 h-96 w-96 rounded-full bg-sage-500/10 blur-[100px]" />
+                                
+                                <div className="relative z-10">
+                                    <div className="w-full rounded-2xl md:rounded-3xl border border-white/10 bg-white/5 p-6 md:p-10 backdrop-blur-sm">
+                                        <h3 className="mb-2 text-3xl font-bold font-display text-center">Sign up to be notified of 1st session</h3>
+                                        <p className="mb-8 text-earth-200 text-center">Be the first to know when sessions launch.</p>
+                                        
+                                        {status === 'success' ? (
+                                            <motion.div 
+                                                initial={{ opacity: 0, scale: 0.9 }}
+                                                animate={{ opacity: 1, scale: 1 }}
+                                                className="rounded-full bg-sage-500/20 border border-sage-500/50 p-6 text-center text-sage-400 font-medium"
+                                            >
+                                                Thank you! We'll be in touch soon.
+                                            </motion.div>
+                                        ) : (
+                                            <form className="space-y-4 max-w-md mx-auto" onSubmit={handleSignUp}>
+                                                <input 
+                                                    type="email" 
+                                                    required
+                                                    value={email}
+                                                    onChange={(e) => setEmail(e.target.value)}
+                                                    placeholder="Your email address"
+                                                    className="w-full rounded-full border border-white/20 bg-white/10 px-6 py-4 text-white placeholder:text-earth-200/50 focus:border-sage-500 focus:outline-none focus:ring-1 focus:ring-sage-500 disabled:opacity-50"
+                                                    disabled={status === 'loading'}
+                                                />
+                                                <button 
+                                                    type="submit"
+                                                    disabled={status === 'loading'}
+                                                    className="w-full rounded-full bg-sage-500 py-4 font-bold text-white transition-all hover:bg-sage-600 disabled:bg-earth-700 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                                                >
+                                                    {status === 'loading' ? (
+                                                        <React.Fragment>
+                                                            <div className="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                                                            Sending...
+                                                        </React.Fragment>
+                                                    ) : (
+                                                        'Notify Me'
+                                                    )}
+                                                </button>
+                                                {status === 'error' && (
+                                                    <p className="text-center text-red-400 text-sm mt-2">
+                                                        Something went wrong. Please try again.
+                                                    </p>
+                                                )}
+                                            </form>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section id="meet-the-team" className="bg-white py-32 px-6">
+                        <div className="mx-auto max-w-5xl">
+                            <div className="flex flex-col gap-16 md:flex-row md:items-start">
+                                <div className="flex-shrink-0 flex flex-col items-center">
+                                    <img 
+                                        src="./photo%20dan.png" 
+                                        alt="Daniel"
+                                        className="h-32 w-32 rounded-full border-4 border-earth-100 shadow-lg grayscale transition-all duration-700 hover:grayscale-0 object-cover"
+                                    />
+                                    <p className="mt-4 font-bold text-earth-900">Daniel</p>
+                                </div>
+
+                                <div className="max-w-3xl">
+                                    <h2 className="mb-8 text-4xl font-bold text-earth-900 font-display">Behind the Name</h2>
+                                    <div className="space-y-6 text-xl leading-relaxed text-earth-800">
+                                        <p>We are all people who have something creative in us that hasn't had a proper home...</p>
+                                        <p>No prior experience. No expectation to be anything other than yourself.</p>
+                                        <p>Just a room, some paint, a character to bring to life, and people who get it.</p>
+                                        <p className="text-2xl font-bold text-sage-600">Layer and Blend exists because creativity thrives in good company.</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section id="gallery" className="bg-earth-50 py-32 overflow-hidden">
+                        <div className="mb-12 px-6 text-center">
+                            <span className="block text-sm font-bold uppercase tracking-widest text-sage-500">GALLERY</span>
+                        </div>
+
+                        {validImages.length > 0 ? (
+                            <div className="relative flex">
+                                <motion.div
+                                    className="flex gap-6 px-3"
+                                    animate={{
+                                        x: [-(256 + 24) * validImages.length, 0],
+                                    }}
+                                    transition={{
+                                        duration: Math.max(validImages.length * 8, 20),
+                                        ease: "linear",
+                                        repeat: Infinity,
+                                    }}
+                                >
+                                    {[...validImages, ...validImages, ...validImages].map((src, idx) => (
+                                        <div key={idx} className="h-64 w-64 flex-shrink-0 overflow-hidden rounded-2xl border border-earth-200 bg-white shadow-sm">
+                                            <img src={src} className="h-full w-full object-cover" />
+                                        </div>
+                                    ))}
+                                </motion.div>
+                            </div>
+                        ) : (
+                            <div className="text-center text-earth-400 italic">Images will appear here once uploaded (1.jpeg, 2.jpeg, etc).</div>
+                        )}
+                    </section>
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
